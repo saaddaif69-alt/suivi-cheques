@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi des chèques et virements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A41;
+    --ink-soft:#4A5A72;
+    --paper:#FAF7F0;
+    --paper-card:#FFFFFF;
+    --line:#E1DCCC;
+    --line-strong:#C9C2AB;
+    --green:#2F5233;
+    --green-bg:#E4EDE2;
+    --amber:#8C5A0B;
+    --amber-bg:#F6E9D2;
+    --red:#8C2F22;
+    --red-bg:#F3DFDA;
+    --gray:#5C584E;
+    --gray-bg:#EAE7DD;
+    --shadow:0 1px 2px rgba(27,42,65,0.06), 0 4px 14px rgba(27,42,65,0.05);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:2.5rem 1.5rem 4rem;}
+
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+  h1{font-family:'Spectral',serif;font-weight:600;font-size:28px;margin:0;letter-spacing:-0.01em;}
+  .sub{color:var(--ink-soft);font-size:14px;margin-top:4px;}
+  .header-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .header-actions-row{display:flex;gap:8px;}
+  .whoami{font-size:12px;color:var(--ink-soft);}
+
+  .btn{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:500;
+    border:1px solid var(--line-strong);background:var(--paper-card);color:var(--ink);
+    padding:9px 16px;border-radius:8px;cursor:pointer;transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:var(--paper);border-color:var(--ink-soft);}
+  .btn-primary{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .btn-primary:hover{background:#101c2e;}
+  .btn-danger{color:var(--red);}
+  .btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
+  .btn-sm{padding:6px 12px;font-size:12.5px;}
+
+  /* Login screen */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+  .login-box{background:var(--paper-card);border:1px solid var(--line);border-radius:12px;padding:2rem;width:100%;max-width:360px;box-shadow:var(--shadow);}
+  .login-box h1{font-size:22px;margin-bottom:4px;}
+  .login-sub{font-size:13px;color:var(--ink-soft);margin-bottom:1.5rem;}
+
+  /* Alert banner */
+  .alert-banner{
+    background:var(--amber-bg);border:1px solid #E4C583;border-radius:10px;
+    padding:12px 16px;margin-bottom:1.5rem;
+  }
+  .alert-head{display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .alert-head .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0;}
+  .alert-head .txt{font-size:14px;font-weight:500;color:#5C3D08;flex:1;}
+  .alert-head .chev{color:#5C3D08;font-size:12px;}
+  .alert-list{margin-top:10px;display:none;flex-direction:column;gap:6px;}
+  .alert-list.open{display:flex;}
+  .alert-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--paper-card);border:1px solid var(--line);border-radius:7px;padding:8px 12px;cursor:pointer;
+  }
+  .alert-item .txt2{font-size:13px;}
+  .alert-item .when{font-size:12px;font-weight:500;}
+  .alert-item .when.late{color:var(--red);}
+  .alert-item .when.soon{color:var(--amber);}
+
+  /* Main type tabs */
+  .main-tabs{display:flex;gap:8px;margin-bottom:1.5rem;border-bottom:1px solid var(--line);}
+  .main-tab{
+    font-family:'Inter',sans-serif;font-size:14.5px;font-weight:500;color:var(--ink-soft);
+    background:none;border:none;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;
+    margin-right:18px;
+  }
+  .main-tab.active{color:var(--ink);border-bottom-color:var(--ink);}
+
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+  .metric{background:var(--paper-card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+  .metric .label{font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .metric .value{font-family:'Spectral',serif;font-size:22px;font-weight:600;}
+  .metric.m-attente .value{color:var(--amber);}
+  .metric.m-encaisse .value{color:var(--green);}
+  .metric.m-rejete .value{color:var(--red);}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab{
+    font-size:13px;padding:7px 13px;border-radius:20px;border:1px solid var(--line);
+    background:var(--paper-card);color:var(--ink-soft);cursor:pointer;
+  }
+  .tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .search{
+    flex:1;min-width:160px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);
+    background:var(--paper-card);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);
+  }
+  .search:focus{outline:none;border-color:var(--ink-soft);}
+
+  .card-form{
+    background:var(--paper-card);border:1px solid var(--line);border-radius:12px;
+    padding:1.25rem 1.5rem;margin-bottom:1.5rem;box-shadow:var(--shadow);
+  }
+  .card-form h2{font-family:'Spectral',serif;font-size:17px;font-weight:600;margin:0 0 1rem;}
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 16px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1/-1;}
+  .field label{font-size:12.5px;color:var(--ink-soft);}
+  .field input,.field select,.field textarea{
+    padding:8px 10px;border-radius:7px;border:1px solid var(--line);
+    font-family:'Inter',sans-serif;font-size:14px;background:var(--paper);color:var(--ink);
+    width:100%;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--ink-soft);background:#fff;}
+  .field textarea{resize:vertical;min-height:44px;}
+  .error-msg{font-size:12.5px;color:var(--red);min-height:16px;}
+  .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:1rem;}
+
+  /* attachments */
+  .attach-section{margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem;}
+  .attach-section h3{font-size:13px;font-weight:500;color:var(--ink-soft);margin:0 0 8px;}
+  .attach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:10px;}
+  .attach-thumb{
+    border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper);
+    position:relative;
+  }
+  .attach-thumb img{width:100%;height:80px;object-fit:cover;display:block;}
+  .attach-thumb .fileicon{
+    width:100%;height:80px;display:flex;align-items:center;justify-content:center;
+    font-size:26px;color:var(--ink-soft);background:var(--gray-bg);
+  }
+  .attach-thumb .rm{
+    position:absolute;top:4px;right:4px;background:rgba(27,42,65,0.75);color:#fff;
+    border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:1;
+  }
+  .attach-thumb .tagwrap{padding:5px 6px;}
+  .attach-thumb .tagwrap input{
+    width:100%;font-size:11.5px;padding:3px 5px;border-radius:5px;border:1px solid var(--line);
+    background:#fff;
+  }
+  .attach-name{font-size:10.5px;color:var(--ink-soft);padding:0 6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .file-input-label{
+    display:inline-block;font-size:13px;padding:8px 14px;border-radius:7px;
+    border:1px dashed var(--line-strong);color:var(--ink-soft);cursor:pointer;background:var(--paper);
+  }
+  .file-input-label:hover{border-color:var(--ink-soft);color:var(--ink);}
+  .file-hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+  .list{display:flex;flex-direction:column;gap:10px;}
+  .row{
+    background:var(--paper-card);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;
+  }
+  .row-main{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .row .num{font-family:'Spectral',serif;font-size:15px;font-weight:600;min-width:74px;}
+  .row .mid{flex:1;min-width:160px;}
+  .row .tiers{font-size:14.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .row .meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .row .montant{font-family:'Spectral',serif;font-size:17px;font-weight:600;white-space:nowrap;}
+  .badge{font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .badge.attente{background:var(--amber-bg);color:var(--amber);}
+  .badge.encaisse{background:var(--green-bg);color:var(--green);}
+  .badge.rejete{background:var(--red-bg);color:var(--red);}
+  .badge.annule{background:var(--gray-bg);color:var(--gray);}
+  .badge.warn{background:var(--red-bg);color:var(--red);}
+  .badge.soon{background:var(--amber-bg);color:var(--amber);}
+  .row-actions{display:flex;gap:4px;align-items:center;}
+  .icon-btn{
+    border:none;background:transparent;color:var(--ink-soft);cursor:pointer;
+    padding:5px 7px;border-radius:6px;font-size:14px;line-height:1;
+  }
+  .icon-btn:hover{background:var(--paper);color:var(--ink);}
+  .clip{font-size:12.5px;color:var(--ink-soft);display:flex;align-items:center;gap:4px;cursor:pointer;border:none;background:none;padding:5px 7px;border-radius:6px;}
+  .clip:hover{background:var(--paper);color:var(--ink);}
+
+  .row-attach{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .row-attach.open{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;}
+  .view-thumb{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--paper);text-decoration:none;color:var(--ink);display:block;}
+  .view-thumb img{width:100%;height:70px;object-fit:cover;display:block;}
+  .view-thumb .fileicon{width:100%;height:70px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink-soft);background:var(--gray-bg);}
+  .view-thumb .cap{font-size:10.5px;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  .empty{text-align:center;padding:3rem 1rem;color:var(--ink-soft);}
+  .empty p{margin:6px 0;}
+  .empty .big{font-family:'Spectral',serif;font-size:18px;color:var(--ink);}
+
+  @media (max-width:560px){
+    .form-grid{grid-template-columns:1fr;}
+    .row .montant{margin-left:auto;}
+    header{flex-direction:column;}
+    .header-actions{align-items:flex-start;width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1 style="font-family:'Spectral',serif;">Suivi des chèques</h1>
+    <div class="login-sub">Connectez-vous pour accéder aux données partagées de l'équipe.</div>
+    <div class="field" style="margin-bottom:10px;">
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" placeholder="vous@exemple.com">
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label for="login-password">Mot de passe</label>
+      <input id="login-password" type="password" placeholder="••••••••">
+    </div>
+    <div class="error-msg" id="login-error"></div>
+    <button class="btn btn-primary" id="btn-login" style="width:100%;">Se connecter</button>
+  </div>
+</div>
+
+<div class="wrap" id="app-content" style="display:none;">
+
+  <header>
+    <div>
+      <h1>Suivi des chèques et virements</h1>
+      <div class="sub">Données partagées : toute personne connectée peut voir et modifier ces opérations.</div>
+    </div>
+    <div class="header-actions">
+      <div class="whoami" id="whoami"></div>
+      <div class="header-actions-row">
+        <button class="btn btn-sm" id="btn-logout">Se déconnecter</button>
+        <button class="btn btn-primary" id="btn-open-form">+ Ajouter une opération</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="alert-banner" id="alert-banner" style="display:none;">
+    <div class="alert-head" id="alert-head">
+      <span class="dot"></span>
+      <span class="txt" id="alert-txt"></span>
+      <span class="chev" id="alert-chev">▾</span>
+    </div>
+    <div class="alert-list" id="alert-list"></div>
+  </div>
+
+  <div class="main-tabs" id="main-tabs"></div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="card-form" id="form-card" style="display:none;">
+    <h2 id="form-title">Nouvelle opération</h2>
+    <div class="form-grid">
+      <div class="field">
+        <label for="f-type">Type d'opération</label>
+        <select id="f-type">
+          <option value="emis">Chèque émis (je paie)</option>
+          <option value="recu">Chèque reçu (on me paie)</option>
+          <option value="virement">Virement</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-numero" id="f-numero-label">Numéro du chèque</label>
+        <input id="f-numero" type="text" placeholder="Ex. 0451236">
+      </div>
+      <div class="field">
+        <label for="f-tiers" id="f-tiers-label">Bénéficiaire / émetteur</label>
+        <input id="f-tiers" type="text" placeholder="Nom de la personne ou société">
+      </div>
+      <div class="field">
+        <label for="f-banque">Banque</label>
+        <input id="f-banque" type="text" placeholder="Ex. Attijariwafa Bank">
+      </div>
+      <div class="field">
+        <label for="f-montant">Montant (DH)</label>
+        <input id="f-montant" type="number" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label for="f-statut">Statut</label>
+        <select id="f-statut"></select>
+      </div>
+      <div class="field">
+        <label for="f-emission" id="f-emission-label">Date d'émission</label>
+        <input id="f-emission" type="date">
+      </div>
+      <div class="field">
+        <label for="f-echeance" id="f-echeance-label">Date d'échéance / encaissement</label>
+        <input id="f-echeance" type="date">
+      </div>
+      <div class="field full">
+        <label for="f-notes">Notes (facultatif)</label>
+        <textarea id="f-notes" placeholder="Détails supplémentaires pour se souvenir de l'opération…"></textarea>
+      </div>
+    </div>
+
+    <div class="attach-section">
+      <h3>Pièces jointes (scan du chèque, facture…)</h3>
+      <div class="attach-grid" id="attach-grid"></div>
+      <label class="file-input-label" for="f-files">+ Ajouter des fichiers</label>
+      <input id="f-files" type="file" accept="image/*,.pdf" multiple style="display:none;">
+      <div class="file-hint">Photos ou PDF, environ 650 Ko par fichier maximum (redimensionnez une photo de téléphone si besoin).</div>
+    </div>
+
+    <div class="error-msg" id="form-error"></div>
+    <div class="form-actions">
+      <button class="btn" id="btn-cancel">Annuler</button>
+      <button class="btn btn-primary" id="btn-save">Enregistrer</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs"></div>
+    <input class="search" id="search" type="text" placeholder="Rechercher un nom, un numéro…">
+  </div>
+
+  <div class="list" id="list"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, getDocs, addDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDCGcxoaL_Ayq1OV42Ui4BCgzE3ahwLQXM",
+  authDomain: "suivicheque.firebaseapp.com",
+  projectId: "suivicheque",
+  storageBucket: "suivicheque.firebasestorage.app",
+  messagingSenderId: "543848498662",
+  appId: "1:543848498662:web:f9a0a68cd1bc45c2598227"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let operations = [];
+let editingId = null;
+let activeMainTab = 'emis';
+let activeFilter = 'tous';
+let searchTerm = '';
+let formAttachments = [];
+let openAttachRow = null;
+let alertOpen = false;
+let unsubscribeOps = null;
+
+const ALERT_DAYS = 3;
+const MAX_FILE_BYTES = 650 * 1024;
+
+const TYPES = {
+  emis: {label:'Chèques émis', numLabel:'Numéro du chèque', tiersLabel:'Bénéficiaire', emissionLabel:"Date d'émission", echeanceLabel:"Date d'échéance"},
+  recu: {label:'Chèques reçus', numLabel:'Numéro du chèque', tiersLabel:'Émetteur', emissionLabel:'Date de réception', echeanceLabel:"Date d'échéance"},
+  virement: {label:'Virements', numLabel:'Référence du virement', tiersLabel:"Bénéficiaire / donneur d'ordre", emissionLabel:'Date de demande', echeanceLabel:"Date d'exécution prévue"}
+};
+const STATUT_LABELS = {
+  emis: {attente:'En attente', encaisse:'Encaissé', rejete:'Rejeté', annule:'Annulé'},
+  recu: {attente:'En attente', encaisse:'Encaissé', rejete:'Rejeté', annule:'Annulé'},
+  virement: {attente:'En attente', encaisse:'Exécuté', rejete:'Échoué', annule:'Annulé'}
+};
+
+function fmtMontant(n){
+  return Number(n).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' DH';
+}
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
+}
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  if(isNaN(d)) return null;
+  return Math.round((d - today) / 86400000);
+}
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+/* ---------- Auth ---------- */
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.getElementById('login-password').addEventListener('keydown', (e)=>{ if(e.key === 'Enter') doLogin(); });
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Entrez votre email et votre mot de passe.'; return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    if(e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found'){
+      errEl.textContent = 'Email ou mot de passe incorrect.';
+    }else if(e.code === 'auth/invalid-email'){
+      errEl.textContent = "Format d'email invalide.";
+    }else{
+      errEl.textContent = "Erreur de connexion (" + e.code + ").";
+    }
+  }
+}
+document.getElementById('btn-logout').addEventListener('click', async ()=>{
+  if(unsubscribeOps){ unsubscribeOps(); unsubscribeOps = null; }
+  await signOut(auth);
+});
+
+onAuthStateChanged(auth, (user)=>{
+  if(user){
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    document.getElementById('whoami').textContent = 'Connecté : ' + user.email;
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-error').textContent = '';
+    startOperationsListener();
+  }else{
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-content').style.display = 'none';
+    if(unsubscribeOps){ unsubscribeOps(); unsubscribeOps = null; }
+    operations = [];
+  }
+});
+
+function startOperationsListener(){
+  if(unsubscribeOps) unsubscribeOps();
+  unsubscribeOps = onSnapshot(collection(db, 'operations'), (snapshot)=>{
+    operations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  }, (err)=>{
+    console.error('Erreur de synchronisation', err);
+  });
+}
+
+/* ---------- Firestore data helpers ---------- */
+async function loadAttachments(id){
+  try{
+    const snap = await getDocs(collection(db, 'operations', id, 'attachments'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }catch(e){ return []; }
+}
+async function saveAttachments(id, list){
+  try{
+    const snap = await getDocs(collection(db, 'operations', id, 'attachments'));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    await Promise.all(list.map(a => addDoc(collection(db, 'operations', id, 'attachments'), {
+      name: a.name, mime: a.mime, dataUrl: a.dataUrl, tag: a.tag || '', addedAt: Date.now()
+    })));
+  }catch(e){ console.error('Erreur pièces jointes', e); }
+}
+async function deleteAllAttachments(id){
+  try{
+    const snap = await getDocs(collection(db, 'operations', id, 'attachments'));
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+  }catch(e){}
+}
+
+/* ---------- Main tabs ---------- */
+function renderMainTabs(){
+  document.getElementById('main-tabs').innerHTML = Object.entries(TYPES).map(([key,t])=>
+    `<button class="main-tab ${activeMainTab===key?'active':''}" data-type="${key}">${t.label}</button>`
+  ).join('');
+  document.querySelectorAll('.main-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      activeMainTab = btn.dataset.type;
+      activeFilter = 'tous';
+      searchTerm = '';
+      document.getElementById('search').value = '';
+      render();
+    });
+  });
+}
+
+/* ---------- Alerts ---------- */
+function computeAlerts(){
+  return operations
+    .filter(op => op.statut === 'attente')
+    .map(op => ({op, d: daysUntil(op.echeance)}))
+    .filter(x => x.d !== null && x.d <= ALERT_DAYS)
+    .sort((a,b)=> a.d - b.d);
+}
+function renderAlerts(){
+  const alerts = computeAlerts();
+  const banner = document.getElementById('alert-banner');
+  if(alerts.length === 0){ banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+  document.getElementById('alert-txt').textContent =
+    alerts.length === 1
+      ? "1 opération arrive à échéance ou est en retard d'encaissement"
+      : `${alerts.length} opérations arrivent à échéance ou sont en retard d'encaissement`;
+  document.getElementById('alert-chev').textContent = alertOpen ? '▴' : '▾';
+  const listEl = document.getElementById('alert-list');
+  listEl.className = 'alert-list' + (alertOpen ? ' open' : '');
+  listEl.innerHTML = alerts.map(({op,d})=>{
+    const t = TYPES[op.type];
+    let when, cls;
+    if(d < 0){ when = `En retard de ${Math.abs(d)} j`; cls='late'; }
+    else if(d === 0){ when = "Aujourd'hui"; cls='soon'; }
+    else{ when = `Dans ${d} j`; cls='soon'; }
+    return `<div class="alert-item" data-jump="${op.type}">
+      <span class="txt2">${t.label.slice(0,-1)} · ${escapeHtml(op.tiers)} · ${fmtMontant(op.montant)}</span>
+      <span class="when ${cls}">${when}</span>
+    </div>`;
+  }).join('');
+  listEl.querySelectorAll('.alert-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      activeMainTab = item.dataset.jump;
+      activeFilter = 'attente';
+      render();
+      document.getElementById('list').scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+}
+document.getElementById('alert-head').addEventListener('click', ()=>{
+  alertOpen = !alertOpen;
+  renderAlerts();
+});
+
+/* ---------- Form ---------- */
+function populateStatutSelect(type){
+  const sel = document.getElementById('f-statut');
+  const labels = STATUT_LABELS[type];
+  sel.innerHTML = Object.entries(labels).map(([k,l])=>`<option value="${k}">${l}</option>`).join('');
+}
+function applyTypeLabels(type){
+  const t = TYPES[type];
+  document.getElementById('f-numero-label').textContent = t.numLabel;
+  document.getElementById('f-numero').placeholder = type==='virement' ? 'Ex. VIR-2026-0031' : 'Ex. 0451236';
+  document.getElementById('f-tiers-label').textContent = t.tiersLabel;
+  document.getElementById('f-emission-label').textContent = t.emissionLabel;
+  document.getElementById('f-echeance-label').textContent = t.echeanceLabel;
+}
+document.getElementById('f-type').addEventListener('change', (e)=>{
+  applyTypeLabels(e.target.value);
+  populateStatutSelect(e.target.value);
+});
+
+async function openForm(existing){
+  editingId = existing ? existing.id : null;
+  const type = existing ? existing.type : activeMainTab;
+  document.getElementById('form-title').textContent = existing ? "Modifier l'opération" : 'Nouvelle opération';
+  document.getElementById('f-type').value = type;
+  applyTypeLabels(type);
+  populateStatutSelect(type);
+  document.getElementById('f-numero').value = existing ? existing.numero : '';
+  document.getElementById('f-tiers').value = existing ? existing.tiers : '';
+  document.getElementById('f-banque').value = existing ? existing.banque : '';
+  document.getElementById('f-montant').value = existing ? existing.montant : '';
+  document.getElementById('f-statut').value = existing ? existing.statut : 'attente';
+  document.getElementById('f-emission').value = existing ? existing.emission : '';
+  document.getElementById('f-echeance').value = existing ? existing.echeance : '';
+  document.getElementById('f-notes').value = existing ? existing.notes : '';
+  document.getElementById('form-error').textContent = '';
+  document.getElementById('f-files').value = '';
+
+  formAttachments = existing ? await loadAttachments(existing.id) : [];
+  renderAttachGrid();
+
+  document.getElementById('form-card').style.display = 'block';
+  document.getElementById('form-card').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function closeForm(){
+  document.getElementById('form-card').style.display = 'none';
+  editingId = null;
+  formAttachments = [];
+}
+
+function renderAttachGrid(){
+  const grid = document.getElementById('attach-grid');
+  grid.innerHTML = formAttachments.map((a, idx)=>{
+    const preview = a.mime && a.mime.startsWith('image/')
+      ? `<img src="${a.dataUrl}" alt="">`
+      : `<div class="fileicon">📄</div>`;
+    return `
+      <div class="attach-thumb" data-idx="${idx}">
+        ${preview}
+        <button class="rm" data-idx="${idx}" title="Retirer">✕</button>
+        <div class="attach-name">${escapeHtml(a.name)}</div>
+        <div class="tagwrap">
+          <input type="text" placeholder="Ex. Scan du chèque" value="${escapeHtml(a.tag||'')}" data-tagidx="${idx}">
+        </div>
+      </div>`;
+  }).join('');
+  grid.querySelectorAll('.rm').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      formAttachments.splice(Number(btn.dataset.idx), 1);
+      renderAttachGrid();
+    });
+  });
+  grid.querySelectorAll('[data-tagidx]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      formAttachments[Number(inp.dataset.tagidx)].tag = inp.value;
+    });
+  });
+}
+
+document.getElementById('f-files').addEventListener('change', (e)=>{
+  const files = Array.from(e.target.files || []);
+  const errEl = document.getElementById('form-error');
+  errEl.textContent = '';
+  files.forEach(file=>{
+    if(file.size > MAX_FILE_BYTES){
+      errEl.textContent = `"${file.name}" est trop volumineux (max ~650 Ko). Compressez-le ou reprenez une photo plus légère.`;
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      formAttachments.push({name:file.name, mime:file.type, dataUrl:reader.result, tag:''});
+      renderAttachGrid();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+});
+
+async function saveCheque(){
+  const type = document.getElementById('f-type').value;
+  const tiers = document.getElementById('f-tiers').value.trim();
+  const montant = document.getElementById('f-montant').value;
+  const errEl = document.getElementById('form-error');
+
+  if(!tiers){
+    errEl.textContent = TYPES[type].tiersLabel + ' est obligatoire.';
+    return;
+  }
+  if(!montant || Number(montant) <= 0){
+    errEl.textContent = 'Indiquez un montant valide.';
+    return;
+  }
+  errEl.textContent = '';
+
+  const id = editingId || (crypto.randomUUID ? crypto.randomUUID() : 'op_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
+  const data = {
+    type,
+    numero: document.getElementById('f-numero').value.trim(),
+    tiers,
+    banque: document.getElementById('f-banque').value.trim(),
+    montant: Number(montant),
+    statut: document.getElementById('f-statut').value,
+    emission: document.getElementById('f-emission').value,
+    echeance: document.getElementById('f-echeance').value,
+    notes: document.getElementById('f-notes').value.trim()
+  };
+
+  try{
+    await setDoc(doc(db, 'operations', id), data);
+    await saveAttachments(id, formAttachments);
+    closeForm();
+  }catch(e){
+    errEl.textContent = "Erreur d'enregistrement : " + e.message;
+  }
+}
+
+async function deleteCheque(id){
+  try{
+    await deleteDoc(doc(db, 'operations', id));
+    await deleteAllAttachments(id);
+  }catch(e){ console.error(e); }
+}
+
+/* ---------- Summary + list ---------- */
+function currentTypeOps(){
+  return operations.filter(o => o.type === activeMainTab);
+}
+function renderSummary(){
+  const ops = currentTypeOps();
+  const totalAttente = ops.filter(o=>o.statut==='attente').reduce((s,o)=>s+o.montant,0);
+  const totalEncaisse = ops.filter(o=>o.statut==='encaisse').reduce((s,o)=>s+o.montant,0);
+  const totalRejete = ops.filter(o=>o.statut==='rejete').reduce((s,o)=>s+o.montant,0);
+  const labels = STATUT_LABELS[activeMainTab];
+  document.getElementById('summary').innerHTML = `
+    <div class="metric m-attente"><div class="label">${labels.attente}</div><div class="value">${fmtMontant(totalAttente)}</div></div>
+    <div class="metric m-encaisse"><div class="label">${labels.encaisse}</div><div class="value">${fmtMontant(totalEncaisse)}</div></div>
+    <div class="metric m-rejete"><div class="label">${labels.rejete}</div><div class="value">${fmtMontant(totalRejete)}</div></div>
+    <div class="metric"><div class="label">Total</div><div class="value">${ops.length}</div></div>
+  `;
+}
+function renderTabs(){
+  const ops = currentTypeOps();
+  const labels = STATUT_LABELS[activeMainTab];
+  const counts = {tous: ops.length};
+  Object.keys(labels).forEach(k => counts[k] = ops.filter(o=>o.statut===k).length);
+  const defs = [['tous','Tous'], ...Object.entries(labels)];
+  document.getElementById('tabs').innerHTML = defs.map(([key,label])=>
+    `<button class="tab ${activeFilter===key?'active':''}" data-filter="${key}">${label} (${counts[key]})</button>`
+  ).join('');
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeFilter = btn.dataset.filter; render(); });
+  });
+}
+function renderList(){
+  let items = currentTypeOps();
+  if(activeFilter !== 'tous') items = items.filter(o => o.statut === activeFilter);
+  if(searchTerm){
+    const s = searchTerm.toLowerCase();
+    items = items.filter(o =>
+      (o.tiers||'').toLowerCase().includes(s) ||
+      (o.numero||'').toLowerCase().includes(s) ||
+      (o.banque||'').toLowerCase().includes(s)
+    );
+  }
+  items.sort((a,b) => (b.echeance||'').localeCompare(a.echeance||''));
+
+  const listEl = document.getElementById('list');
+  if(items.length === 0){
+    const t = TYPES[activeMainTab];
+    listEl.innerHTML = `
+      <div class="empty">
+        <p class="big">${currentTypeOps().length===0 ? 'Aucune opération enregistrée' : 'Aucun résultat'}</p>
+        <p>${currentTypeOps().length===0 ? `Ajoutez votre premier(e) ${t.label.toLowerCase().replace(/s$/,'')} pour commencer.` : 'Essayez un autre filtre ou une autre recherche.'}</p>
+      </div>`;
+    return;
+  }
+
+  const labels = STATUT_LABELS[activeMainTab];
+  listEl.innerHTML = items.map(o => {
+    const cls = o.statut;
+    const d = o.statut === 'attente' ? daysUntil(o.echeance) : null;
+    let urgentBadge = '';
+    if(d !== null && d <= ALERT_DAYS){
+      if(d < 0) urgentBadge = `<span class="badge warn">En retard ${Math.abs(d)} j</span>`;
+      else if(d === 0) urgentBadge = `<span class="badge soon">Échéance aujourd'hui</span>`;
+      else urgentBadge = `<span class="badge soon">Échéance dans ${d} j</span>`;
+    }
+    const rowOpen = openAttachRow === o.id;
+    return `
+      <div class="row" data-id="${o.id}">
+        <div class="row-main">
+          <div class="num">${o.numero ? '#'+escapeHtml(o.numero) : '—'}</div>
+          <div class="mid">
+            <div class="tiers">${escapeHtml(o.tiers)}</div>
+            <div class="meta">
+              <span>${o.banque ? escapeHtml(o.banque)+' · ' : ''}Échéance ${fmtDate(o.echeance)}</span>
+              ${urgentBadge}
+            </div>
+          </div>
+          <span class="badge ${cls}">${labels[o.statut]}</span>
+          <div class="montant">${fmtMontant(o.montant)}</div>
+          <div class="row-actions">
+            <button class="clip btn-clip" title="Pièces jointes">📎 <span class="clip-count" data-id="${o.id}">…</span></button>
+            <button class="icon-btn btn-edit" title="Modifier">✎</button>
+            <button class="icon-btn btn-danger btn-del" title="Supprimer">✕</button>
+          </div>
+        </div>
+        <div class="row-attach ${rowOpen?'open':''}" id="attach-${o.id}"></div>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.btn-edit').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const id = e.target.closest('.row').dataset.id;
+      openForm(operations.find(o=>o.id===id));
+    });
+  });
+  listEl.querySelectorAll('.btn-del').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      const id = e.target.closest('.row').dataset.id;
+      if(confirm('Supprimer cette opération et ses pièces jointes ?')) deleteCheque(id);
+    });
+  });
+  listEl.querySelectorAll('.btn-clip').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const id = e.target.closest('.row').dataset.id;
+      openAttachRow = openAttachRow === id ? null : id;
+      if(openAttachRow) await renderRowAttachments(id);
+      renderList();
+    });
+  });
+
+  items.forEach(o => refreshClipCount(o.id));
+}
+
+async function refreshClipCount(id){
+  const list = await loadAttachments(id);
+  const el = document.querySelector(`.clip-count[data-id="${id}"]`);
+  if(el) el.textContent = list.length;
+}
+
+async function renderRowAttachments(id){
+  const el = document.getElementById('attach-' + id);
+  if(!el) return;
+  const list = await loadAttachments(id);
+  if(list.length === 0){
+    el.innerHTML = `<div style="font-size:12.5px;color:var(--ink-soft);">Aucune pièce jointe. Modifiez l'opération pour en ajouter.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(a=>{
+    const preview = a.mime && a.mime.startsWith('image/') ? `<img src="${a.dataUrl}" alt="">` : `<div class="fileicon">📄</div>`;
+    return `<a class="view-thumb" href="${a.dataUrl}" download="${escapeHtml(a.name)}" target="_blank">
+      ${preview}
+      <div class="cap">${escapeHtml(a.tag || a.name)}</div>
+    </a>`;
+  }).join('');
+}
+
+function render(){
+  renderMainTabs();
+  renderAlerts();
+  renderSummary();
+  renderTabs();
+  renderList();
+}
+
+document.getElementById('btn-open-form').addEventListener('click', ()=>openForm(null));
+document.getElementById('btn-cancel').addEventListener('click', closeForm);
+document.getElementById('btn-save').addEventListener('click', saveCheque);
+document.getElementById('search').addEventListener('input', (e)=>{ searchTerm = e.target.value; renderList(); });
+</script>
+</body>
+</html>
